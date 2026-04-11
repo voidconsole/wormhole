@@ -1,0 +1,89 @@
+// firestore.rules
+// Deploy with: firebase deploy --only firestore:rules
+//
+// Philosophy: Firebase is a dumb encrypted blob store.
+// Clients do all crypto. Rules enforce structure only.
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Rooms ──────────────────────────────────────────────
+    match /rooms/{roomId} {
+
+      // Anyone can read a room document to check if it exists
+      // and verify the password hash before joining.
+      allow read: if true;
+
+      // Only allow creating a room if all required fields exist
+      // and isActive = true.
+      allow create: if
+        request.resource.data.keys().hasAll([
+          'roomName', 'passwordHash', 'createdAt',
+          'adminId', 'isActive'
+        ])
+        && request.resource.data.roomName is string
+        && request.resource.data.roomName.size() > 0
+        && request.resource.data.roomName.size() <= 40
+        && request.resource.data.isActive == true;
+
+      // Allow update only for changing adminId or isActive
+      allow update: if
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['adminId', 'isActive']);
+
+      // Allow delete (room teardown by admin / last-user-leaves)
+      allow delete: if true;
+
+      // ── Users subcollection ───────────────────────────────
+      match /users/{userId} {
+        // Read: anyone in the room (we trust them — no server auth)
+        allow read: if true;
+
+        // Create: must have required fields
+        allow create: if
+          request.resource.data.keys().hasAll([
+            'username', 'joinedAt', 'isAdmin'
+          ])
+          && request.resource.data.username is string
+          && request.resource.data.username.size() >= 2
+          && request.resource.data.username.size() <= 24;
+
+        // Update: only for admin promotion
+        allow update: if
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['isAdmin']);
+
+        // Delete: allowed (kick, leave)
+        allow delete: if true;
+      }
+
+      // ── Messages subcollection ────────────────────────────
+      match /messages/{messageId} {
+        // Read: anyone (they can't decrypt without the key anyway)
+        allow read: if true;
+
+        // Create: must have required fields, encryptedContent is a string
+        allow create: if
+          request.resource.data.keys().hasAll([
+            'sender', 'encryptedContent', 'type', 'createdAt'
+          ])
+          && request.resource.data.encryptedContent is string
+          && request.resource.data.encryptedContent.size() > 0
+          && request.resource.data.type in ['text','image','audio','video','file'];
+
+        // No editing or deleting individual messages from the client.
+        // Deletion happens via the admin's deleteRoom() which uses
+        // the Admin SDK or batch deletes — handled in firebase.js
+        // with client SDK (batch delete).
+        allow delete: if true;
+        allow update: if false;
+      }
+    }
+
+    // Deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Wormhole</title>
+        <link rel="stylesheet" href="css/styles.css" />
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"
+        />
+        <!-- Apply saved theme BEFORE paint — prevents flash -->
+        <script>
+            ;(function () {
+                const saved = localStorage.getItem("vc_theme") || "light"
+                document.documentElement.setAttribute("data-theme", saved)
+            })()
+        </script>
+    </head>
+    <body>
+        <!-- Invite-link username gate (shown if arriving via share link) -->
+        <div id="invite-join-wrap">
+            <div class="glass form-card invite-join-card">
+                <div class="form-title">
+                    <i class="fa-solid fa-link fa-icon"></i> You've been invited
+                </div>
+                <div class="field">
+                    <label for="invite-username">Choose your username</label>
+                    <input
+                        id="invite-username"
+                        type="text"
+                        placeholder="e.g. shadow_wolf"
+                        autocomplete="off"
+                        maxlength="24"
+                    />
+                    <span class="field-error"></span>
+                </div>
+                <button class="btn btn--primary" id="btn-invite-join">
+                    Enter Room
+                </button>
+            </div>
+        </div>
+
+        <!-- Drag-drop overlay -->
+        <div id="drop-overlay">
+            <div class="drop-hint">Drop file to send</div>
+        </div>
+
+        <!-- Main layout -->
+        <div class="chat-layout">
+            <!-- Sidebar -->
+            <aside class="chat-sidebar glass" id="sidebar">
+                <div class="sidebar-header">
+                    <span class="sidebar-logo">WORMHOLE</span>
+                </div>
+
+                <div class="sidebar-section">
+                    <div class="sidebar-label">
+                        Online
+                        <span id="user-count">0</span>
+                    </div>
+                </div>
+
+                <ul id="user-list"></ul>
+
+                <!-- Share action -->
+                <div class="sidebar-section">
+                    <button
+                        class="btn btn--ghost"
+                        id="btn-share"
+                        style="width: 100%; font-size: 0.78rem; padding: 11px"
+                    >
+                        <i class="fa-solid fa-share-nodes fa-icon"></i> Share
+                    </button>
+                </div>
+
+                <!-- Sidebar actions -->
+                <div class="sidebar-actions">
+                    <div
+                        class="admin-section"
+                        id="admin-section"
+                        style="display: none"
+                    >
+                        <span class="admin-badge">
+                            <i class="fa-solid fa-crown fa-icon"></i> Admin
+                        </span>
+                    </div>
+                    <button
+                        class="btn btn--ghost"
+                        id="btn-save"
+                        style="font-size: 0.68rem; padding: 9px"
+                    >
+                        <i class="fa-solid fa-floppy-disk"></i> Save Chat
+                    </button>
+                    <button
+                        class="btn btn--ghost"
+                        id="btn-leave"
+                        style="font-size: 0.68rem; padding: 9px"
+                    >
+                        <i class="fa-solid fa-door-open"></i> Leave
+                    </button>
+                    <button
+                        class="btn btn--danger"
+                        id="btn-end"
+                        style="font-size: 0.68rem; padding: 9px; display: none"
+                    >
+                        <i class="fa-solid fa-triangle-exclamation"></i> End
+                        Session
+                    </button>
+                </div>
+            </aside>
+
+            <div id="sidebar-backdrop"></div>
+
+            <!-- Header -->
+            <header class="chat-header">
+                <!-- Sidebar toggle -->
+                <button
+                    class="btn btn--icon"
+                    id="btn-sidebar-toggle"
+                    aria-label="Menu"
+                >
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <span class="chat-header__room" id="header-room-name"
+                    >Loading…</span
+                >
+            </header>
+
+            <!-- Messages -->
+            <main id="messages"></main>
+
+            <!-- Input bar -->
+            <div class="chat-input-area">
+                <button
+                    class="btn btn--icon"
+                    id="btn-attach"
+                    title="Attach file"
+                    aria-label="Attach file"
+                >
+                    <i class="fa-solid fa-paperclip"></i>
+                </button>
+                <input
+                    type="file"
+                    id="file-input"
+                    style="display: none"
+                    accept="*/*"
+                />
+                <textarea
+                    id="msg-input"
+                    placeholder="Message… (Enter to send, Shift+Enter for newline)"
+                    rows="1"
+                    aria-label="Message input"
+                ></textarea>
+                <button class="btn btn--send" id="btn-send" aria-label="Send">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+        <!-- /.chat-layout -->
+
+        <div id="share-popup" class="modal-overlay">
+            <div class="modal-card modal-card--share">
+                <div class="modal-title">Share room</div>
+                <div class="modal-body share-body">
+                    <div class="share-block">
+                        <div class="share-label">Invite link</div>
+                        <div class="share-link-box">
+                            <input
+                                id="share-link-input"
+                                class="share-link"
+                                readonly
+                                value=""
+                            />
+                            <button
+                                class="btn btn--ghost"
+                                id="btn-copy-share-link"
+                            >
+                                <i class="fa-solid fa-copy"></i> Copy
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="share-block share-qr-block">
+                        <div class="share-label">QR code</div>
+                        <div class="qr-card" id="qr-trigger">
+                            <div class="qr-ghost" id="qr-ghost">
+                                <div class="qr-ghost__text">
+                                    Tap to generate QR
+                                </div>
+                            </div>
+                            <img
+                                id="qr-image"
+                                class="qr-image"
+                                alt="Invite QR code"
+                                hidden
+                            />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn--ghost" id="btn-close-share">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading overlay -->
+        <div id="loading-overlay">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Connecting…</div>
+        </div>
+
+        <!-- Theme Toggle — same as index.html -->
+        <button
+            id="theme-toggle"
+            aria-label="Toggle theme"
+            title="Switch theme"
+        >
+            <span class="theme-toggle__icon" id="theme-icon">🌙</span>
+            <span id="theme-label">Dark mode</span>
+        </button>
+
+        <!-- Theme switcher script (non-module, runs immediately) -->
+        <script>
+            ;(function () {
+                const html = document.documentElement
+                const toggleBtn = document.getElementById("theme-toggle")
+                const themeIcon = document.getElementById("theme-icon")
+                const themeLabel = document.getElementById("theme-label")
+
+                function applyTheme(theme, animate) {
+                    if (animate) {
+                        html.classList.add("theme-switching")
+                        setTimeout(
+                            () => html.classList.remove("theme-switching"),
+                            380,
+                        )
+                    }
+                    html.setAttribute("data-theme", theme)
+                    localStorage.setItem("vc_theme", theme)
+
+                    if (theme === "dark") {
+                        themeIcon.innerHTML = '<i class="fa-solid fa-sun"></i>'
+                        themeLabel.textContent = "Dawn Mode"
+                    } else {
+                        themeIcon.innerHTML = '<i class="fa-solid fa-moon"></i>'
+                        themeLabel.textContent = "Dusk Mode"
+                    }
+                }
+
+                // Set initial label based on already-applied theme
+                applyTheme(html.getAttribute("data-theme") || "light", false)
+
+                toggleBtn.addEventListener("click", () => {
+                    const current = html.getAttribute("data-theme") || "light"
+                    applyTheme(current === "light" ? "dark" : "light", true)
+                })
+            })()
+        </script>
+
+        <script type="module">
+            import {
+                loadSession,
+                clearSession,
+                parseInviteLink,
+                handleJoinViaLink,
+                watchRoomStatus,
+                generateInviteLink,
+            } from "./js/room.js"
+            import { deriveKey } from "./js/crypto.js"
+            import { getRoom } from "./js/firebase.js"
+            import {
+                initChat,
+                destroyChat,
+                sendTextMessage,
+                sendFileAuto,
+                endSession,
+                leaveRoom,
+                saveChat,
+                getPassword,
+                getRoomId,
+            } from "./js/chat.js"
+            import {
+                showToast,
+                showLoading,
+                hideLoading,
+                setError,
+            } from "./js/ui.js"
+
+            // ─── State ────────────────────────────────────────────────
+            let _key = null
+            let _roomName = ""
+            let _isAdmin = false
+            let _password = null
+            let _roomId = null
+            let _inviteUrl = null
+            // ─── Boot sequence ────────────────────────────────────────
+
+            async function boot() {
+                showLoading("Connecting…")
+
+                // 1. Check if arriving via invite link
+                const invite = parseInviteLink()
+
+                if (invite) {
+                    hideLoading()
+                    document
+                        .getElementById("invite-join-wrap")
+                        .classList.add("active")
+                    return
+                }
+
+                // 2. Normal flow — recover session
+                const session = loadSession()
+                if (!session.roomId) {
+                    window.location.href = "index.html"
+                    return
+                }
+
+                const password = sessionStorage.getItem("vc_password")
+                sessionStorage.removeItem("vc_password")
+                sessionStorage.removeItem("vc_roomId_pending")
+
+                if (!password) {
+                    clearSession()
+                    window.location.href = "index.html"
+                    return
+                }
+
+                _password = password
+                _key = await deriveKey(password, session.roomId)
+                _isAdmin = session.isAdmin
+                _roomId = session.roomId
+
+                const room = await getRoom(session.roomId)
+                if (!room || !room.isActive) {
+                    showToast("This room no longer exists.", "error")
+                    clearSession()
+                    setTimeout(() => {
+                        window.location.href = "index.html"
+                    }, 1500)
+                    return
+                }
+
+                _roomName = room.roomName
+                await startChat(
+                    session.roomId,
+                    session.userId,
+                    session.username,
+                    session.isAdmin,
+                )
+            }
+
+            // ─── Invite link join ─────────────────────────────────────
+
+            document
+                .getElementById("btn-invite-join")
+                .addEventListener("click", async () => {
+                    const usernameIn =
+                        document.getElementById("invite-username")
+                    const username = usernameIn.value.trim().toLowerCase()
+                    if (
+                        !username ||
+                        username.length < 2 ||
+                        !/^[a-zA-Z0-9_\-]+$/.test(username)
+                    ) {
+                        setError(
+                            usernameIn,
+                            "2+ chars, letters/numbers/_ only.",
+                        )
+                        return
+                    }
+
+                    const invite = parseInviteLink()
+                    if (!invite) return
+
+                    showLoading("Joining via invite…")
+                    try {
+                        const { roomId, userId } = await handleJoinViaLink(
+                            invite.roomId,
+                            invite.keyB64,
+                            username,
+                        )
+                        document
+                            .getElementById("invite-join-wrap")
+                            .classList.remove("active")
+
+                        const { importKeyBase64 } =
+                            await import("./js/crypto.js")
+                        _key = await importKeyBase64(invite.keyB64)
+                        _isAdmin = false
+                        _roomId = roomId
+
+                        const room = await getRoom(roomId)
+                        _roomName = room?.roomName ?? "Room"
+
+                        await startChat(roomId, userId, username, false)
+                    } catch (err) {
+                        hideLoading()
+                        setError(
+                            document.getElementById("invite-username"),
+                            err.message,
+                        )
+                    }
+                })
+
+            // ─── Start chat ───────────────────────────────────────────
+
+            async function startChat(roomId, userId, username, isAdmin) {
+                hideLoading()
+
+                document.getElementById("header-room-name").textContent =
+                    _roomName
+                document.title = `Wormhole · ${_roomName}`
+
+                if (isAdmin) {
+                    document.getElementById("admin-section").style.display =
+                        "block"
+                    document.getElementById("btn-end").style.display = "block"
+                }
+
+                if (_password) {
+                    _inviteUrl = await generateInviteLink(_password, roomId)
+                } else {
+                    const invite = parseInviteLink()
+                    if (invite?.roomId === roomId) {
+                        _inviteUrl = window.location.href
+                    }
+                }
+
+                watchRoomStatus(roomId, () => {
+                    destroyChat()
+                    showToast("The room has ended.", "info")
+                    clearSession()
+                    setTimeout(() => {
+                        window.location.href = "index.html"
+                    }, 2000)
+                })
+
+                initChat({
+                    roomId,
+                    userId,
+                    username,
+                    isAdmin,
+                    key: _key,
+                    password: _password,
+                })
+            }
+
+            // ─── Input handling ───────────────────────────────────────
+
+            const msgInput = document.getElementById("msg-input")
+
+            msgInput.addEventListener("keydown", e => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault()
+                    doSend()
+                }
+            })
+
+            msgInput.addEventListener("input", () => {
+                msgInput.style.height = "42px"
+                msgInput.style.height =
+                    Math.min(msgInput.scrollHeight, 120) + "px"
+            })
+
+            document
+                .getElementById("btn-send")
+                .addEventListener("click", doSend)
+
+            async function doSend() {
+                const text = msgInput.value
+                if (!text.trim()) return
+                msgInput.value = ""
+                msgInput.style.height = "42px"
+                await sendTextMessage(text)
+            }
+
+            // ─── File attach ──────────────────────────────────────────
+
+            document
+                .getElementById("btn-attach")
+                .addEventListener("click", () => {
+                    document.getElementById("file-input").click()
+                })
+
+            document
+                .getElementById("file-input")
+                .addEventListener("change", async e => {
+                    const file = e.target.files?.[0]
+                    if (file) await sendFileAuto(file)
+                    e.target.value = ""
+                })
+
+            // ─── Drag & drop ──────────────────────────────────────────
+
+            const dropOverlay = document.getElementById("drop-overlay")
+
+            window.addEventListener("dragenter", () =>
+                dropOverlay.classList.add("active"),
+            )
+            dropOverlay.addEventListener("dragleave", () =>
+                dropOverlay.classList.remove("active"),
+            )
+            dropOverlay.addEventListener("dragover", e => e.preventDefault())
+            dropOverlay.addEventListener("drop", async e => {
+                e.preventDefault()
+                dropOverlay.classList.remove("active")
+                const file = e.dataTransfer.files?.[0]
+                if (file) await sendFileAuto(file)
+            })
+
+            // ─── Admin controls ───────────────────────────────────────
+
+            document
+                .getElementById("btn-end")
+                .addEventListener("click", endSession)
+
+            // ─── Leave / Save ─────────────────────────────────────────
+
+            const doLeave = leaveRoom
+            const doSave = () => saveChat(_roomName)
+
+            document
+                .getElementById("btn-leave")
+                .addEventListener("click", doLeave)
+            document
+                .getElementById("btn-save")
+                .addEventListener("click", doSave)
+            const btnSaveHeader = document.getElementById("btn-save-header")
+            if (btnSaveHeader) btnSaveHeader.addEventListener("click", doSave)
+
+            const btnLeaveHeader = document.getElementById("btn-leave-header")
+            if (btnLeaveHeader)
+                btnLeaveHeader.addEventListener("click", doLeave)
+
+            // ─── Share popup ───────────────────────────────────────────
+
+            const sharePopup = document.getElementById("share-popup")
+            const btnShare = document.getElementById("btn-share")
+            const btnCopyShareLink = document.getElementById(
+                "btn-copy-share-link",
+            )
+            const btnCloseShare = document.getElementById("btn-close-share")
+            const shareLinkInput = document.getElementById("share-link-input")
+            const qrTrigger = document.getElementById("qr-trigger")
+            const qrGhost = document.getElementById("qr-ghost")
+            const qrImage = document.getElementById("qr-image")
+
+            const openSharePopup = () => {
+                sharePopup.classList.add("modal-overlay--visible")
+                if (_inviteUrl) {
+                    shareLinkInput.value = _inviteUrl
+                } else {
+                    shareLinkInput.value = "No invite link available"
+                }
+                qrGhost.style.display = "flex"
+                qrGhost.querySelector(".qr-ghost__text").textContent =
+                    "Tap to generate QR"
+                qrImage.hidden = true
+                qrImage.src = ""
+            }
+
+            const closeSharePopup = () => {
+                sharePopup.classList.remove("modal-overlay--visible")
+            }
+
+            btnShare?.addEventListener("click", openSharePopup)
+            btnCloseShare?.addEventListener("click", closeSharePopup)
+            sharePopup?.addEventListener("click", e => {
+                if (e.target === sharePopup) closeSharePopup()
+            })
+
+            btnCopyShareLink?.addEventListener("click", async () => {
+                if (!_inviteUrl) {
+                    showToast("No invite link ready", "warn")
+                    return
+                }
+
+                try {
+                    await navigator.clipboard.writeText(_inviteUrl)
+                    showToast("Link copied!", "success")
+                } catch (err) {
+                    showToast("Unable to copy link.", "error")
+                }
+            })
+
+            qrTrigger?.addEventListener("click", () => {
+                if (!_inviteUrl) {
+                    showToast("No invite link ready", "warn")
+                    return
+                }
+
+                qrGhost.querySelector(".qr-ghost__text").textContent =
+                    "Generating QR…"
+                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(
+                    _inviteUrl,
+                )}`
+                qrImage.hidden = false
+                qrImage.src = qrApiUrl
+                qrImage.onload = () => {
+                    qrGhost.style.display = "none"
+                }
+                qrImage.onerror = () => {
+                    qrGhost.querySelector(".qr-ghost__text").textContent =
+                        "QR load failed. Try again."
+                    qrImage.hidden = true
+                }
+            })
+
+            // ─── Sidebar overlay ───────────────────────────────────────
+
+            const sidebarToggle = document.getElementById("btn-sidebar-toggle")
+            const sidebar = document.getElementById("sidebar")
+            const sidebarBackdrop = document.getElementById("sidebar-backdrop")
+
+            const closeSidebar = () => {
+                sidebar.classList.remove("open")
+                sidebarBackdrop.classList.remove("visible")
+            }
+
+            const openSidebar = () => {
+                sidebar.classList.add("open")
+                sidebarBackdrop.classList.add("visible")
+            }
+
+            sidebarToggle.addEventListener("click", () => {
+                if (sidebar.classList.contains("open")) {
+                    closeSidebar()
+                } else {
+                    openSidebar()
+                }
+            })
+
+            sidebarBackdrop.addEventListener("click", closeSidebar)
+
+            document.addEventListener("keydown", e => {
+                if (e.key === "Escape" && sidebar.classList.contains("open")) {
+                    closeSidebar()
+                }
+            })
+
+            // ─── Start ────────────────────────────────────────────────
+            boot()
+        </script>
+    </body>
+</html>

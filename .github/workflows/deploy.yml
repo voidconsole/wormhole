@@ -1,0 +1,83 @@
+# .github/workflows/deploy.yml
+#
+# On every push to main:
+#  1. Copies all source files to a staging dir
+#  2. Replaces __PLACEHOLDER__ tokens in firebase.js with
+#     real values stored as GitHub repository secrets
+#  3. Deploys the staged files to GitHub Pages
+#
+# How to add secrets:
+#   GitHub repo → Settings → Secrets and variables → Actions
+#   → New repository secret
+#   Add one secret for each of the names below.
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # allow manual trigger from Actions tab
+
+permissions:
+  contents: write      # needed to push to gh-pages branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout source ───────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Stage files ───────────────────────────────────────
+      - name: Prepare staging directory
+        run: |
+          mkdir -p _site/js _site/css
+          cp index.html   _site/
+          cp chat.html    _site/
+          cp css/styles.css _site/css/
+          cp js/crypto.js   _site/js/
+          cp js/room.js     _site/js/
+          cp js/chat.js     _site/js/
+          cp js/ui.js       _site/js/
+          cp js/firebase.js _site/js/   # placeholder version — patched next
+          touch _site/.nojekyll         # disable Jekyll processing
+
+      # ── 3. Inject Firebase secrets ───────────────────────────
+      #
+      # sed replaces each __PLACEHOLDER__ token with the real
+      # secret value. Secrets are never written to disk in the repo.
+      - name: Inject Firebase config
+        env:
+          FIREBASE_API_KEY:            ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_AUTH_DOMAIN:        ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          FIREBASE_PROJECT_ID:         ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_MESSAGING_SENDER_ID:${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+          FIREBASE_APP_ID:             ${{ secrets.FIREBASE_APP_ID }}
+        run: |
+          sed -i \
+            -e "s|__FIREBASE_API_KEY__|${FIREBASE_API_KEY}|g" \
+            -e "s|__FIREBASE_AUTH_DOMAIN__|${FIREBASE_AUTH_DOMAIN}|g" \
+            -e "s|__FIREBASE_PROJECT_ID__|${FIREBASE_PROJECT_ID}|g" \
+            -e "s|__FIREBASE_MESSAGING_SENDER_ID__|${FIREBASE_MESSAGING_SENDER_ID}|g" \
+            -e "s|__FIREBASE_APP_ID__|${FIREBASE_APP_ID}|g" \
+            _site/js/firebase.js
+
+      # ── 4. Sanity check — make sure no placeholder remains ───
+      - name: Verify injection succeeded
+        run: |
+          if grep -q "__FIREBASE_" _site/js/firebase.js; then
+            echo "❌ One or more Firebase secrets were not injected."
+            echo "   Check that all 5 secrets are set in repo Settings → Secrets."
+            exit 1
+          fi
+          echo "✅ All Firebase secrets injected successfully."
+
+      # ── 5. Deploy to gh-pages branch ─────────────────────────
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir:  ./_site
+          force_orphan: true    # keep gh-pages branch clean (no history)

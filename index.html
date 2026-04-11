@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Wormhole	 — Anonymous Encrypted Chat</title>
+        <link rel="stylesheet" href="css/styles.css" />
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"
+        />
+
+        <!-- Apply saved theme BEFORE paint to prevent flash -->
+        <script>
+            ;(function () {
+                const saved = localStorage.getItem("vc_theme") || "dark"
+                document.documentElement.setAttribute("data-theme", saved)
+            })()
+        </script>
+    </head>
+    <body>
+        <div class="page">
+            <div class="landing-wrap">
+                <!-- Brand -->
+                <div class="brand">
+                    <div class="brand__logo">WORMHOLE</div>
+                    <div class="brand__sub">
+                        End-to-end encrypted · Anonymous · Ephemeral
+                    </div>
+                </div>
+
+                <!-- Encryption status badge -->
+                <div class="enc-badge">
+                    <span class="enc-badge-dot"></span>
+                    AES-256-GCM · Keys never leave your device
+                </div>
+
+                <!-- Tab switcher -->
+                <div class="tab-bar">
+                    <button class="tab-btn active" data-tab="create">
+                        Create Room
+                    </button>
+                    <button class="tab-btn" data-tab="join">Join Room</button>
+                </div>
+
+                <!-- Create Room Panel -->
+                <div id="panel-create" class="tab-panel active">
+                    <div class="glass form-card">
+                        <div class="form-title">
+                            <i class="fa-solid fa-space-shuttle fa-icon"></i
+                            >Create a new room
+                        </div>
+                        <form id="form-create" novalidate>
+                            <div class="field">
+                                <label for="create-name">Room Name</label>
+                                <input
+                                    id="create-name"
+                                    type="text"
+                                    placeholder="e.g. alpha-squad"
+                                    autocomplete="off"
+                                    maxlength="40"
+                                />
+                                <span class="field-error"></span>
+                            </div>
+
+                            <div class="field">
+                                <label for="create-password">Password</label>
+                                <input
+                                    id="create-password"
+                                    type="password"
+                                    placeholder="Choose a strong password"
+                                    autocomplete="new-password"
+                                />
+                                <span class="field-error"></span>
+                            </div>
+
+                            <div class="field">
+                                <label for="create-username"
+                                    >Your Username</label
+                                >
+                                <input
+                                    id="create-username"
+                                    type="text"
+                                    placeholder="e.g. ghost_rider"
+                                    autocomplete="off"
+                                    maxlength="24"
+                                />
+                                <span class="field-error"></span>
+                            </div>
+
+                            <button
+                                type="submit"
+                                class="btn btn--primary"
+                                id="btn-create"
+                            >
+                                <i class="fa-solid fa-play"></i> Create &amp;
+                                Enter
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Join Room Panel -->
+                <div id="panel-join" class="tab-panel">
+                    <div class="glass form-card">
+                        <div class="form-title">
+                            <i class="fa-solid fa-door-open fa-icon"></i>Join an
+                            existing room
+                        </div>
+                        <form id="form-join" novalidate>
+                            <div class="field">
+                                <label for="join-name">Room Name</label>
+                                <input
+                                    id="join-name"
+                                    type="text"
+                                    placeholder="Enter room name"
+                                    autocomplete="off"
+                                    maxlength="40"
+                                />
+                                <span class="field-error"></span>
+                            </div>
+
+                            <div class="field">
+                                <label for="join-password">Password</label>
+                                <input
+                                    id="join-password"
+                                    type="password"
+                                    placeholder="Room password"
+                                    autocomplete="current-password"
+                                />
+                                <span class="field-error"></span>
+                            </div>
+
+                            <div class="field">
+                                <label for="join-username">Your Username</label>
+                                <input
+                                    id="join-username"
+                                    type="text"
+                                    placeholder="e.g. nebula_x"
+                                    autocomplete="off"
+                                    maxlength="24"
+                                />
+                                <span class="field-error"></span>
+                            </div>
+
+                            <button
+                                type="submit"
+                                class="btn btn--primary"
+                                id="btn-join"
+                            >
+                                <i
+                                    class="fa-solid fa-arrow-right-to-bracket"
+                                ></i>
+                                Join Room
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <!-- /.landing-wrap -->
+        </div>
+        <!-- /.page -->
+
+        <!-- Loading overlay -->
+        <div id="loading-overlay">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Connecting…</div>
+        </div>
+
+        <!-- Theme Toggle -->
+        <button
+            id="theme-toggle"
+            aria-label="Toggle theme"
+            title="Switch theme"
+        >
+            <span class="theme-toggle__icon" id="theme-icon"
+                ><i class="fa-solid fa-moon"></i
+            ></span>
+            <span id="theme-label">Light mode</span>
+        </button>
+
+        <script>
+            // ── Theme switcher ────────────────────────────────────────
+            const html = document.documentElement
+            const toggleBtn = document.getElementById("theme-toggle")
+            const themeIcon = document.getElementById("theme-icon")
+            const themeLabel = document.getElementById("theme-label")
+
+            function applyTheme(theme, animate) {
+                if (animate) {
+                    html.classList.add("theme-switching")
+                    setTimeout(
+                        () => html.classList.remove("theme-switching"),
+                        380,
+                    )
+                }
+                html.setAttribute("data-theme", theme)
+                localStorage.setItem("vc_theme", theme)
+
+                if (theme === "dark") {
+                    themeIcon.innerHTML = '<i class="fa-solid fa-sun"></i>'
+                    themeLabel.textContent = "Dawn Mode"
+                } else {
+                    themeIcon.innerHTML = '<i class="fa-solid fa-moon"></i>'
+                    themeLabel.textContent = "Dusk Mode"
+                }
+            }
+
+            // Set initial label
+            applyTheme(localStorage.getItem("vc_theme") || "light", false)
+
+            toggleBtn.addEventListener("click", () => {
+                const current = html.getAttribute("data-theme") || "light"
+                applyTheme(current === "light" ? "dark" : "light", true)
+            })
+        </script>
+
+        <script type="module">
+            import { handleCreateRoom, handleJoinRoom } from "./js/room.js"
+            import {
+                showLoading,
+                hideLoading,
+                setError,
+                clearErrors,
+            } from "./js/ui.js"
+
+            // ── Tab switching ─────────────────────────────────────────
+            document.querySelectorAll(".tab-btn").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const tab = btn.dataset.tab
+                    document
+                        .querySelectorAll(".tab-btn")
+                        .forEach(b => b.classList.toggle("active", b === btn))
+                    document
+                        .querySelectorAll(".tab-panel")
+                        .forEach(p =>
+                            p.classList.toggle(
+                                "active",
+                                p.id === `panel-${tab}`,
+                            ),
+                        )
+                })
+            })
+
+            // ── Helpers ───────────────────────────────────────────────
+            function validateUsername(val, input) {
+                if (!val) {
+                    setError(input, "Username is required.")
+                    return false
+                }
+                if (val.length < 2) {
+                    setError(input, "At least 2 characters.")
+                    return false
+                }
+                if (!/^[a-zA-Z0-9_\-]+$/.test(val)) {
+                    setError(input, "Letters, numbers, _ and - only.")
+                    return false
+                }
+                return true
+            }
+
+            function setSubmitting(btn, yes) {
+                btn.disabled = yes
+                btn.textContent = yes ? "Please wait…" : btn.dataset.label
+            }
+
+            document.querySelectorAll(".btn--primary").forEach(b => {
+                b.dataset.label = b.textContent
+            })
+
+            function storeKeyMaterial(password, roomId) {
+                sessionStorage.setItem("vc_password", password)
+                sessionStorage.setItem("vc_roomId_pending", roomId)
+            }
+
+            // ── Create Room ───────────────────────────────────────────
+            document
+                .getElementById("form-create")
+                .addEventListener("submit", async e => {
+                    e.preventDefault()
+                    const form = e.target
+                    const nameIn = document.getElementById("create-name")
+                    const passIn = document.getElementById("create-password")
+                    const userIn = document.getElementById("create-username")
+                    const btn = document.getElementById("btn-create")
+
+                    clearErrors(form)
+                    let ok = true
+
+                    const roomName = nameIn.value.trim()
+                    const password = passIn.value
+                    const username = userIn.value.trim().toLowerCase()
+
+                    if (!roomName) {
+                        setError(nameIn, "Room name is required.")
+                        ok = false
+                    }
+                    if (password.length < 6) {
+                        setError(
+                            passIn,
+                            "Password must be at least 6 characters.",
+                        )
+                        ok = false
+                    }
+                    if (!validateUsername(username, userIn)) ok = false
+                    if (!ok) return
+
+                    setSubmitting(btn, true)
+                    showLoading("Creating room…")
+
+                    try {
+                        const { roomId } = await handleCreateRoom(
+                            roomName,
+                            password,
+                            username,
+                        )
+                        storeKeyMaterial(password, roomId)
+                        window.location.href = "chat.html"
+                    } catch (err) {
+                        hideLoading()
+                        setSubmitting(btn, false)
+                        if (err.message.includes("name"))
+                            setError(nameIn, err.message)
+                        else if (err.message.includes("assword"))
+                            setError(passIn, err.message)
+                        else setError(nameIn, err.message)
+                    }
+                })
+
+            // ── Join Room ─────────────────────────────────────────────
+            document
+                .getElementById("form-join")
+                .addEventListener("submit", async e => {
+                    e.preventDefault()
+                    const form = e.target
+                    const nameIn = document.getElementById("join-name")
+                    const passIn = document.getElementById("join-password")
+                    const userIn = document.getElementById("join-username")
+                    const btn = document.getElementById("btn-join")
+
+                    clearErrors(form)
+                    let ok = true
+
+                    const roomName = nameIn.value.trim()
+                    const password = passIn.value
+                    const username = userIn.value.trim().toLowerCase()
+
+                    if (!roomName) {
+                        setError(nameIn, "Room name is required.")
+                        ok = false
+                    }
+                    if (!password) {
+                        setError(passIn, "Password is required.")
+                        ok = false
+                    }
+                    if (!validateUsername(username, userIn)) ok = false
+                    if (!ok) return
+
+                    setSubmitting(btn, true)
+                    showLoading("Joining room…")
+
+                    try {
+                        const { roomId } = await handleJoinRoom(
+                            roomName,
+                            password,
+                            username,
+                        )
+                        storeKeyMaterial(password, roomId)
+                        window.location.href = "chat.html"
+                    } catch (err) {
+                        hideLoading()
+                        setSubmitting(btn, false)
+                        if (err.message.includes("ound"))
+                            setError(nameIn, err.message)
+                        else if (err.message.includes("assword"))
+                            setError(passIn, err.message)
+                        else if (err.message.includes("sername"))
+                            setError(userIn, err.message)
+                        else setError(nameIn, err.message)
+                    }
+                })
+        </script>
+    </body>
+</html>
