@@ -886,6 +886,7 @@ h3 {
     position: relative;
     z-index: 1;
     height: 100vh;
+    height: 100dvh; /* dvh shrinks when the virtual keyboard opens — 100vh does not */
     display: grid;
     grid-template-columns: 1fr;
     grid-template-rows: 56px 1fr 68px;
@@ -1339,6 +1340,7 @@ h3 {
     gap: 8px;
     padding: 0 16px;
     background: var(--surface);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     border-top: 1px solid var(--border);
     backdrop-filter: var(--blur-sm);
     -webkit-backdrop-filter: var(--blur-sm);
