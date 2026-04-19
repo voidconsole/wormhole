@@ -1,11 +1,39 @@
-# Wormhole
+# Wormhole - Hyperspeed Encrypted Communication Tunnel
 ## Disclaimer - This project was made with agentic development via LLMs
 
 **Anonymous · Encrypted · Ephemeral chat rooms**
 End-to-end encrypted chat using AES-256-GCM. Firebase stores only ciphertext. Keys never leave the client.
 
 ---
+## The what
+A supafast fuss-less no-login encrypted chat server which uses firebase’s firestore and auth as backend.
+Has ability to create many rooms, allows frictionless entry of users, QR code shareability, file and media sharing, encrypted for both text and media, and a super cool dusk/dusk design system shift.
 
+## The why
+I've always wanted a communication protocol that doesn't require personal information like phone numbers or emails, and is not cubersome to sign up.
+In finding a solution to that, I've built a sleek frictionless encrypted communication tunnel as a chat server, where one can both join and make rooms in seconds, without worrying about security.
+
+
+
+## Usage 
+Open [https://voidconsole.github.io/wormhole/](https://voidconsole.github.io/wormhole/) and enjoy!
+
+
+## Features
+- Sick theme switcher
+- End to End Encrypted texts and media
+- Media and file support
+- No sign in required, just username, and the room creds you wish to join.
+- Creating rooms is as easy as joining one
+- Messages cleared after admin terminates session
+- Username management at server level
+- Admin controls for regulation
+- Responsive for all devices
+- High storage limit
+- Unlimited users
+- Unlimited session time
+
+---
 ## File Structure
 
 ```
@@ -22,103 +50,6 @@ End-to-end encrypted chat using AES-256-GCM. Firebase stores only ciphertext. Ke
     chat.js           Messaging, file upload, admin controls, save
     ui.js             DOM rendering: messages, user list, toasts
 ```
-
----
-
-## Setup (15 minutes)
-
-### 1. Firebase Project
-
-1. Go to https://console.firebase.google.com
-2. Create a new project
-3. Enable **Firestore Database** (start in production mode)
-4. Enable **Firebase Storage**
-5. Go to Project Settings → General → Your Apps → Web App
-6. Copy the `firebaseConfig` object
-
-### 2. Plug in your config
-
-Open `js/firebase.js` and replace the placeholder config:
-
-```js
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
-};
-```
-
-### 3. Deploy Firestore rules
-
-Install Firebase CLI if you haven't:
-```bash
-npm install -g firebase-tools
-firebase login
-firebase init firestore   # point to your project
-```
-
-Then deploy:
-```bash
-firebase deploy --only firestore:rules
-```
-
-Or paste the contents of `firestore.rules` directly into the Firebase Console → Firestore → Rules tab.
-
-### 4. Storage rules
-
-In Firebase Console → Storage → Rules, set:
-
-```
-rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /rooms/{roomId}/{allPaths=**} {
-      allow read, write: if true;
-    }
-  }
-}
-```
-
-(For production, tighten this further with auth.)
-
-### 5. Host / Serve
-
-**Local dev (no build step required):**
-```bash
-npx serve .
-# or
-python3 -m http.server 8080
-```
-
-**Firebase Hosting:**
-```bash
-firebase init hosting   # set public dir to "."
-firebase deploy --only hosting
-```
-
-> ⚠️ Must be served over HTTPS (or localhost) for the Web Crypto API to work.
-
----
-
-## Security Architecture
-
-```
-Password ──PBKDF2(310k iters)──► AES-256-GCM Key
-                                         │
-Plaintext ──────────────────────────────►│──► Encrypted Blob ──► Firebase
-                                         │
-Firebase ──► Encrypted Blob ────────────►│──► Plaintext (client only)
-```
-
-- **PBKDF2** with 310,000 iterations (NIST 2023 minimum)
-- **AES-256-GCM** with a random 12-byte IV per message
-- **SHA-256** password hash stored in room document (for membership verification only — NOT the encryption key)
-- Invite links carry the derived raw key (base64) in the URL — share only over secure channels
-
----
 
 ## Known Limitations & Edge Cases
 
